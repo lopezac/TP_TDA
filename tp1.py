@@ -82,7 +82,7 @@ def validar_tests_aproximado(carpeta):
         rata, sospechoso = leer_archivo(carpeta + "/" + file)
         intervalos = (parsear_a_intervalos(rata))
         esperado = True
-        if "no-es.txt" in file:
+        if "no-es" in file:
             esperado = False
         culpabilidad = es_culpable(intervalos, sospechoso)
         if culpabilidad == esperado:
