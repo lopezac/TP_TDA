@@ -5,17 +5,21 @@ def es_culpable(transacciones,tiempos_sospechosos):
     valores=dic_transacciones(transacciones)
     transacciones_ord=ordenar_tiempos(transacciones)  
     for i in range(len(tiempos_sospechosos)): 
+        
+        hay_candidato=False
+
         for j in range(len(transacciones_ord)):
             cota_inferior=transacciones_ord[j][0]-transacciones_ord[j][1]
             cota_superior=transacciones_ord[j][0]+transacciones_ord[j][1]
 
-            if  (tiempos_sospechosos[i]>=cota_inferior and tiempos_sospechosos[i]<=cota_superior and valores[transacciones_ord[j]] > 0):
+            if (tiempos_sospechosos[i]>=cota_inferior and tiempos_sospechosos[i]<=cota_superior and valores[transacciones_ord[j]] > 0):
                 valores[transacciones_ord[j]]-=1
                 resultado.append((tiempos_sospechosos[i],transacciones_ord[j]))
+                hay_candidato=True
                 break
     
-    if len(resultado) != len(tiempos_sospechosos):
-        return None
+        if not hay_candidato:
+            return None
            
     return resultado
 
@@ -64,8 +68,13 @@ def main():
     intervalos = parsear_a_tuplas(t3)
     print("Deberia ser True:", es_culpable(intervalos, s3))
 
+    rata,sospechoso=leer_archivo("5000-es.txt")
+    respuesta=es_culpable(rata,sospechoso)
+    if not respuesta:
+        print("False")
+    else:
+        print("True")
 
-# main()
 
 # rata es de la forma [[timestamp, error], ...]
 # sospechoso es de la forma [timestamp, ...]
@@ -84,7 +93,7 @@ def leer_archivo(archivo):
                 n = int(line)
             elif 2 <= index < 2 + n:
                 datos = line.split(",")
-                rata.append([int(datos[0]), int(datos[1])])
+                rata.append((int(datos[0]), int(datos[1])))
             elif 2 + n <= index < len(lines):
                 sospechoso.append(int(line))
 
@@ -95,13 +104,12 @@ def leer_archivo(archivo):
 # bien los datos), y los que terminan en "no-es.txt" retornen que el sospechoso no es la rata
 def validar_tests_aproximado(carpeta):
     for file in os.listdir(carpeta):
-        if file == "Resultados Esperados.txt":
+        if file == "Resultados Esperados.txt" or file == "Esperados":
             continue
 
         rata, sospechoso = leer_archivo(carpeta + "/" + file)
-        intervalos = (parsear_a_tuplas(rata))
 
-        respuesta = es_culpable(intervalos, sospechoso)
+        respuesta = es_culpable(rata, sospechoso)
         if (respuesta is None and "no-es" in file) or (respuesta is not None and "es" in file):
             print("Test " + file + " OK")
             if respuesta is not None:
@@ -112,5 +120,6 @@ def validar_tests_aproximado(carpeta):
         else:
             print("Test " + file + " FAIL")
 
-
-validar_tests_aproximado("tests")
+if __name__ == "__main__":
+    # main()
+    validar_tests_aproximado("tests")
