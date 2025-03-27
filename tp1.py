@@ -1,20 +1,39 @@
 import os
 
-def es_culpable(transacciones, tiempos_sospechosos):
-    candidatos = set()
-    cantidad_transacciones = len(transacciones)
-    for i in range(cantidad_transacciones):
-        for j in range(cantidad_transacciones):
-            if (tiempos_sospechosos[i] >= transacciones[j][0] and tiempos_sospechosos[i] <= transacciones[j][1]):
-                candidatos.add(transacciones[i])
+def es_culpable(transacciones,tiempos_sospechosos):
+    resultado=[]
+    valores=dic_transacciones(transacciones)
+    transacciones_ord=ordenar_tiempos(transacciones)  
+    for i in range(len(tiempos_sospechosos)): 
+        for j in range(len(transacciones_ord)):
+            cota_inferior=transacciones_ord[j][0]-transacciones_ord[j][1]
+            cota_superior=transacciones_ord[j][0]+transacciones_ord[j][1]
 
-    return len(candidatos) == len(tiempos_sospechosos)
+            if  (tiempos_sospechosos[i]>=cota_inferior and tiempos_sospechosos[i]<=cota_superior and valores[transacciones_ord[j]] > 0):
+                valores[transacciones_ord[j]]-=1
+                resultado.append((tiempos_sospechosos[i],transacciones_ord[j]))
+                break
+    
+    if len(resultado) != len(tiempos_sospechosos):
+        return None
+           
+    return resultado
+
+def dic_transacciones(t):
+    dic={}
+    for tran in t:
+        dic[tran] = dic.get(tran,0)+1
+    return dic
+
+def ordenar_tiempos(t):
+    t=sorted(t, key=lambda punto: (punto[0]+punto[1]))
+    return t
 
 
-def parsear_a_intervalos(t):
+def parsear_a_tuplas(t):
     intervalos = []
     for i in range(len(t)):
-        intervalos.append((t[i][0] - t[i][1], t[i][0] + t[i][1]))
+        intervalos.append((t[i][0], t[i][1],))
     return intervalos
 
 
@@ -22,13 +41,13 @@ def main():
     # caso_5_es
     t = [(599, 12), (727, 49), (892, 82), (856, 70), (229, 45)]
     s = [213, 607, 711, 806, 816]
-    intervalos = (parsear_a_intervalos(t))
+    intervalos = (parsear_a_tuplas(t))
 
     print("Deberia ser True", es_culpable(intervalos, s))
     # caso_5_no_es
     t1 = [(908, 66), (845, 30), (728, 97), (807, 97), (624, 40)]
     s1 = [46, 560, 600, 890, 998]
-    intervalos = (parsear_a_intervalos(t1))
+    intervalos = (parsear_a_tuplas(t1))
     print("Deberia ser False", es_culpable(intervalos, s1))
 
     # caso 50_es
@@ -42,11 +61,11 @@ def main():
           563, 600, 625, 626, 630, 652, 661, 696, 701, 716, 723, 734, 743, 774, 846, 852, 861, 890, 908, 909, 916, 918,
           937, 946, 950, 983, 1001, 1042]
 
-    intervalos = parsear_a_intervalos(t3)
+    intervalos = parsear_a_tuplas(t3)
     print("Deberia ser True:", es_culpable(intervalos, s3))
 
 
-main()
+# main()
 
 # rata es de la forma [[timestamp, error], ...]
 # sospechoso es de la forma [timestamp, ...]
@@ -80,15 +99,18 @@ def validar_tests_aproximado(carpeta):
             continue
 
         rata, sospechoso = leer_archivo(carpeta + "/" + file)
-        intervalos = (parsear_a_intervalos(rata))
-        esperado = True
-        if "no-es" in file:
-            esperado = False
-        culpabilidad = es_culpable(intervalos, sospechoso)
-        if culpabilidad == esperado:
-            print(("exito:     " + file).ljust(30), "es", esperado, "y nos da", culpabilidad)
+        intervalos = (parsear_a_tuplas(rata))
+
+        respuesta = es_culpable(intervalos, sospechoso)
+        if (respuesta is None and "no-es" in file) or (respuesta is not None and "es" in file):
+            print("Test " + file + " OK")
+            if respuesta is not None:
+                with open("Resultados/"+file, 'w') as f:
+                    for i in range(len(respuesta)):
+                        f.write(str(respuesta[i][0]) + " --> " + str(respuesta[i][1][0]) + " ± " + str(respuesta[i][1][1]) + "\n")
+                    # print(str(respuesta[i][0]),"-->",str(respuesta[i][1][0]),"±",str(respuesta[i][1][1]))
         else:
-            print(("FALLO!!!:  " + file).ljust(30), "es", esperado, "pero nos da", culpabilidad)
+            print("Test " + file + " FAIL")
 
 
 validar_tests_aproximado("tests")
