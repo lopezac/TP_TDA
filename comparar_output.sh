@@ -1,7 +1,16 @@
 #!/bin/bash
 
+# Los colores que usamos para imprimir en pantalla
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NO_COLOR='\033[0m'
+
 # Directory containing the generated results
 dir_generados="Resultados"
+
+if [ ! -d "$dir_generados" ]; then
+    mkdir "$dir_generados"
+fi
 
 # Directory containing the expected results
 dir_esperados="tests/Esperados"
@@ -17,13 +26,14 @@ for arch_genereado in "$dir_generados"/*es*; do
     # Check if the expected file exists
     if [ -f "$expected_file" ]; then
         # Compare the generated file with the expected file
+        echo -e "\nDiferencias entre $arch_genereado y $expected_file"
         diff "$arch_genereado" "$expected_file"
         
         # Check the result of the diff command
         if [ $? -eq 0 ]; then
-            echo "Comparison for $filename: OK"
+            echo -e "${GREEN}Ninguna! :)${NO_COLOR}"
         else
-            echo "Comparison for $filename: FAIL"
+            echo -e "${RED}Las de arriba :(${NO_COLOR}"
         fi
     else
         echo "Expected file $expected_file not found"

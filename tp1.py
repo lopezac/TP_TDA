@@ -1,4 +1,5 @@
 import os
+import sys
 
 def es_culpable(transacciones,tiempos_sospechosos):
     resultado=[]
@@ -103,6 +104,10 @@ def leer_archivo(archivo):
 # validamos que los tests que terminen en "es-txt" retornen que el sospechoso es la rata (pero no nos fijamos si estan
 # bien los datos), y los que terminan en "no-es.txt" retornen que el sospechoso no es la rata
 def validar_tests_aproximado(carpeta):
+    # Si no existe la carpeta Resultados la creamos
+    if not os.path.exists("Resultados"):
+        os.makedirs("Resultados")
+
     for file in os.listdir(carpeta):
         if file == "Resultados Esperados.txt" or file == "Esperados":
             continue
@@ -121,5 +126,17 @@ def validar_tests_aproximado(carpeta):
             print("Test " + file + " FAIL")
 
 if __name__ == "__main__":
-    # main()
-    validar_tests_aproximado("tests")
+    # Si pasamos un archivo por parametro, leemos ese archivo y le mostramos al usuario si el sospechoso es o no la rata
+    if len(sys.argv) > 1:
+        archivo = sys.argv[1]
+        rata, sospechoso = leer_archivo(archivo)
+        respuesta = es_culpable(rata, sospechoso)
+        if respuesta is None:
+            print("El sospechoso no es la rata")
+        else:
+            for i in range(len(respuesta)):
+                print(str(respuesta[i][0]), "-->", str(respuesta[i][1][0]), "±", str(respuesta[i][1][1]))
+    # Si no pasamos un archivo por parametro, corremos los tests aproximados
+    else:
+        # main()
+        validar_tests_aproximado("tests")
