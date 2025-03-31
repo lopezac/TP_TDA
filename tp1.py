@@ -1,5 +1,6 @@
 import os
 import sys
+import random
 
 def es_culpable(transacciones,tiempos_sospechosos):
     resultado=[]
@@ -76,6 +77,64 @@ def main():
     else:
         print("True")
 
+def generate_intervals(n, center_range, error_range):
+    """
+    Generate a set of intervals.
+    
+    Args:
+        n (int): Number of intervals to generate.
+        center_range (tuple): Range for the center values (min, max).
+        error_range (tuple): Range for the error values (min, max).
+    
+    Returns:
+        list: A list of intervals in the format (center, error).
+    """
+    intervals = []
+    for _ in range(n):
+        center = random.randint(*center_range)
+        error = random.randint(*error_range)
+        intervals.append((center, error))
+    return intervals
+
+def generate_guesses(length, intervals):
+    guesses = []
+    for _ in range(length):
+        # Randomly pick an interval and its error
+        interval, error = random.choice(intervals)
+        # Generate a guess within the range [interval - error, interval + error]
+        guess = random.randint(interval - error, interval + error)
+        guesses.append(guess)
+    guesses.sort()
+    return guesses
+
+def crear_archivo(n, rata, sospechoso, es=True):
+    with open("tests/"+str(n)+f"-{'es' if es else 'no-es'}.txt", 'w') as f:
+        f.write("# Primero viene la cantidad (n) de timestamps para ambos, luego n líneas que son un timestamp aproximado cada uno separado por una coma (',') del error, y luego n lineas de las transacciones del sospechoso\n")
+        f.write(str(n)+"\n")
+        for i in range(len(rata)):
+            f.write(str(rata[i][0])+","+str(rata[i][1])+"\n")
+        for i in range(len(sospechoso)):
+            f.write(str(sospechoso[i])+"\n")
+
+def probar_generador():
+    respuesta = None
+    seed = 0
+    while respuesta is None:
+        seed += 1
+        random.seed(seed)
+        n = 10000  # Number of intervals
+        center_range = (100, 1000)  # Range for center values
+        error_range = (10, 100)  # Range for error values
+        
+        # Generate intervals
+        new_intervals = generate_intervals(n, center_range, error_range)
+        guesses = generate_guesses(n, new_intervals)
+        respuesta = es_culpable(new_intervals, guesses)
+    print("Intervals:", new_intervals)
+    print("Guesses:", guesses)
+    print("Respuesta:", respuesta)
+    print("Seed:", seed)
+    crear_archivo(n, new_intervals, guesses)
 
 # rata es de la forma [[timestamp, error], ...]
 # sospechoso es de la forma [timestamp, ...]
@@ -139,4 +198,5 @@ if __name__ == "__main__":
     # Si no pasamos un archivo por parametro, corremos los tests aproximados
     else:
         # main()
-        validar_tests_aproximado("tests")
+        # validar_tests_aproximado("tests")
+        probar_generador()
