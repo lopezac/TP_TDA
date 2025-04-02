@@ -81,27 +81,28 @@ def generate_guesses(length, intervals):
 
 # Generamos intervalos de (tiempo, error) de la rata, y tiempos del sospechoso aleatorios, y si el sospechoso es la
 # rata, escribimos en un archivo en la carpeta "tests_generados" el resultado
-def probar_generador():
-    respuesta = None
-    seed = 0
-    n = random.randint(5, 20_000)  # Number of intervals
-    center_range = (100, 1000)  # Range for center values
-    error_range = (10, 100)  # Range for error values
-    guesses = []
-    new_intervals = []
+def generar_test_exitoso(cantidad):
+    for i in range(cantidad):
+        respuesta = None
+        seed = 0
+        # TODO: aumentar los rangos de error y de centro
+        n = random.randint(5, 10_000)  # Number of intervals
+        center_range = (100, 1000)  # Range for center values
+        error_range = (10, 100)  # Range for error values
+        guesses = []
+        new_intervals = []
 
-    print("Generaremos intervalos de la rata y tiempos del sospechoso, tales que el sospechoso sea culpable!")
-    while respuesta is None:
-        seed += 1
-        random.seed(seed)
+        while respuesta is None:
+            seed += 1
+            random.seed(seed)
 
-        # Generate intervals
-        new_intervals = generate_intervals(n, center_range, error_range)
-        guesses = generate_guesses(n, new_intervals)
-        respuesta = es_culpable(new_intervals, guesses)
+            # Generate intervals
+            new_intervals = generate_intervals(n, center_range, error_range)
+            guesses = generate_guesses(n, new_intervals)
+            respuesta = es_culpable(new_intervals, guesses)
 
-    print(f"Generamos un set de datos de longitud {n}, escrito en la carpeta tests_generados")
-    escribir_archivo_test(n, new_intervals, guesses, carpeta="tests_generados")
+        print(f"#{i}: generado un set de datos de longitud {n}")
+        escribir_archivo_test(n, new_intervals, guesses, carpeta="tests_generados")
 
 
 # validamos que los tests que terminen en "es-txt" retornen que el sospechoso es la rata (pero no nos fijamos si estan
@@ -143,6 +144,7 @@ def escribir_archivo_test(n, rata, sospechoso, es=True, carpeta="tests"):
     with open(f"{carpeta}/{n}-{'es' if es else 'no-es'}.txt", 'w') as f:
         f.write(
             "# Primero viene la cantidad (n) de timestamps para ambos, luego n líneas que son un timestamp aproximado cada uno separado por una coma (',') del error, y luego n lineas de las transacciones del sospechoso\n")
+        f.write(f"{n}\n")
         for tiempo, error in rata:
             f.write(f"{tiempo},{error}\n")
         for tiempo in sospechoso:
@@ -212,13 +214,17 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         # main()
         # validar_tests_aproximado("tests")
-        probar_generador()
+        generar_test_exitoso()
 
     match sys.argv[1]:
         case "--validar-tests":
             validar_tests_aproximado("tests")
         case "--generar-set-datos":
-            probar_generador()
+            cantidad = int(sys.argv[2])
+            for file in os.listdir("tests_generados"):
+                os.remove(f"tests_generados/{file}")
+            print(f"Generaremos {cantidad} intervalos de la rata y tiempos del sospechoso, tales que el sospechoso sea culpable!")
+            generar_test_exitoso(cantidad)
         case other:
             # Si pasamos un archivo por parametro, leemos ese archivo y le mostramos al usuario si el sospechoso es o no
             # la rata
