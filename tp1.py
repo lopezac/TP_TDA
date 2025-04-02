@@ -1,38 +1,42 @@
 import os
-import sys
 import random
+import sys
 
-def es_culpable(transacciones,tiempos_sospechosos):
-    resultado=[]
-    valores=dic_transacciones(transacciones)
-    transacciones_ord=ordenar_tiempos(transacciones)  
-    for i in range(len(tiempos_sospechosos)): 
-        
-        hay_candidato=False
+
+def es_culpable(transacciones, tiempos_sospechosos):
+    resultado = []
+    valores = dic_transacciones(transacciones)
+    transacciones_ord = ordenar_tiempos(transacciones)
+    for i in range(len(tiempos_sospechosos)):
+
+        hay_candidato = False
 
         for j in range(len(transacciones_ord)):
-            cota_inferior=transacciones_ord[j][0]-transacciones_ord[j][1]
-            cota_superior=transacciones_ord[j][0]+transacciones_ord[j][1]
+            cota_inferior = transacciones_ord[j][0] - transacciones_ord[j][1]
+            cota_superior = transacciones_ord[j][0] + transacciones_ord[j][1]
 
-            if (tiempos_sospechosos[i]>=cota_inferior and tiempos_sospechosos[i]<=cota_superior and valores[transacciones_ord[j]] > 0):
-                valores[transacciones_ord[j]]-=1
-                resultado.append((tiempos_sospechosos[i],transacciones_ord[j]))
-                hay_candidato=True
+            if (tiempos_sospechosos[i] >= cota_inferior and tiempos_sospechosos[i] <= cota_superior and valores[
+                transacciones_ord[j]] > 0):
+                valores[transacciones_ord[j]] -= 1
+                resultado.append((tiempos_sospechosos[i], transacciones_ord[j]))
+                hay_candidato = True
                 break
-    
+
         if not hay_candidato:
             return None
-           
+
     return resultado
 
+
 def dic_transacciones(t):
-    dic={}
+    dic = {}
     for tran in t:
-        dic[tran] = dic.get(tran,0)+1
+        dic[tran] = dic.get(tran, 0) + 1
     return dic
 
+
 def ordenar_tiempos(t):
-    t=sorted(t, key=lambda punto: (punto[0]+punto[1]))
+    t = sorted(t, key=lambda punto: (punto[0] + punto[1]))
     return t
 
 
@@ -41,6 +45,132 @@ def parsear_a_tuplas(t):
     for i in range(len(t)):
         intervalos.append((t[i][0], t[i][1],))
     return intervalos
+
+
+def generate_intervals(n, center_range, error_range):
+    """
+    Generate a set of intervals.
+
+    Args:
+        n (int): Number of intervals to generate.
+        center_range (tuple): Range for the center values (min, max).
+        error_range (tuple): Range for the error values (min, max).
+
+    Returns:
+        list: A list of intervals in the format (center, error).
+    """
+    intervals = []
+    for _ in range(n):
+        center = random.randint(*center_range)
+        error = random.randint(*error_range)
+        intervals.append((center, error))
+    return intervals
+
+
+def generate_guesses(length, intervals):
+    guesses = []
+    for _ in range(length):
+        # Randomly pick an interval and its error
+        interval, error = random.choice(intervals)
+        # Generate a guess within the range [interval - error, interval + error]
+        guess = random.randint(interval - error, interval + error)
+        guesses.append(guess)
+    guesses.sort()
+    return guesses
+
+
+# Generamos intervalos de (tiempo, error) de la rata, y tiempos del sospechoso aleatorios, y si el sospechoso es la
+# rata, escribimos en un archivo en la carpeta "tests_generados" el resultado
+def probar_generador():
+    respuesta = None
+    seed = 0
+    n = random.randint(5, 20_000)  # Number of intervals
+    center_range = (100, 1000)  # Range for center values
+    error_range = (10, 100)  # Range for error values
+    guesses = []
+    new_intervals = []
+
+    print("Generaremos intervalos de la rata y tiempos del sospechoso, tales que el sospechoso sea culpable!")
+    while respuesta is None:
+        seed += 1
+        random.seed(seed)
+
+        # Generate intervals
+        new_intervals = generate_intervals(n, center_range, error_range)
+        guesses = generate_guesses(n, new_intervals)
+        respuesta = es_culpable(new_intervals, guesses)
+
+    print(f"Generamos un set de datos de longitud {n}, escrito en la carpeta tests_generados")
+    escribir_archivo_test(n, new_intervals, guesses, carpeta="tests_generados")
+
+
+# validamos que los tests que terminen en "es-txt" retornen que el sospechoso es la rata (pero no nos fijamos si estan
+# bien los datos), y los que terminan en "no-es.txt" retornen que el sospechoso no es la rata
+def validar_tests_aproximado(carpeta):
+    for file in os.listdir(carpeta):
+        if file == "Resultados Esperados.txt" or file == "Esperados":
+            continue
+
+        rata, sospechoso = leer_archivo_test(carpeta + "/" + file)
+        respuesta = es_culpable(rata, sospechoso)
+        if (respuesta is None and "no-es" in file) or (respuesta is not None and "es" in file):
+            print("Test " + file + " OK")
+            if respuesta is not None:
+                escribir_archivo_resultado(file, respuesta)
+        else:
+            print("Test " + file + " FAIL")
+
+
+# ---------------------------- Funciones relacionadas a la lectura y escritura de archivos -----------------------------
+
+
+# escribe un archivo de resultado esperado (forma "tiempo rata" --> "tiempo sospechoso ± error sospechoso")
+def escribir_archivo_resultado(archivo, respuestas):
+    carpeta = "Resultados"
+    if not os.path.exists(carpeta):
+        os.makedirs(carpeta)
+
+    with open(f"{carpeta}/{archivo}", 'w') as f:
+        for sospechoso, (tiempo_rata, error_rata) in respuestas:
+            f.write(f"{sospechoso} --> {tiempo_rata} ± {error_rata}\n")
+
+
+# escribe un archivo de test (aparecen los intervalos de la rata, y los tiempos del sospechoso)
+def escribir_archivo_test(n, rata, sospechoso, es=True, carpeta="tests"):
+    if not os.path.exists(carpeta):
+        os.makedirs(carpeta)
+
+    with open(f"{carpeta}/{n}-{'es' if es else 'no-es'}.txt", 'w') as f:
+        f.write(
+            "# Primero viene la cantidad (n) de timestamps para ambos, luego n líneas que son un timestamp aproximado cada uno separado por una coma (',') del error, y luego n lineas de las transacciones del sospechoso\n")
+        for tiempo, error in rata:
+            f.write(f"{tiempo},{error}\n")
+        for tiempo in sospechoso:
+            f.write(f"{tiempo}\n")
+
+
+# lee un archivo de test (aparecen los intervalos de la rata, y los tiempos del sospechoso)
+# rata es de la forma [[timestamp, error], ...], sospechoso es de la forma [timestamp, ...]
+# ejemplo el archivo 5-es.txt devuelve:
+# Rata = [[599, 12], [727, 49], [892, 82], [856, 70], [229, 45]]
+# Sospechoso = [213, 607, 711, 806, 816]
+def leer_archivo_test(archivo):
+    rata = []
+    sospechoso = []
+    n = 0
+
+    with open(archivo, 'r') as f:
+        lines = f.readlines()
+        for index, line in enumerate(lines):
+            if index == 1:
+                n = int(line)
+            elif 2 <= index < 2 + n:
+                datos = line.split(",")
+                rata.append((int(datos[0]), int(datos[1])))
+            elif 2 + n <= index < len(lines):
+                sospechoso.append(int(line))
+
+    return rata, sospechoso
 
 
 def main():
@@ -70,133 +200,33 @@ def main():
     intervalos = parsear_a_tuplas(t3)
     print("Deberia ser True:", es_culpable(intervalos, s3))
 
-    rata,sospechoso=leer_archivo("5000-es.txt")
-    respuesta=es_culpable(rata,sospechoso)
+    rata, sospechoso = leer_archivo_test("5000-es.txt")
+    respuesta = es_culpable(rata, sospechoso)
     if not respuesta:
         print("False")
     else:
         print("True")
 
-def generate_intervals(n, center_range, error_range):
-    """
-    Generate a set of intervals.
-    
-    Args:
-        n (int): Number of intervals to generate.
-        center_range (tuple): Range for the center values (min, max).
-        error_range (tuple): Range for the error values (min, max).
-    
-    Returns:
-        list: A list of intervals in the format (center, error).
-    """
-    intervals = []
-    for _ in range(n):
-        center = random.randint(*center_range)
-        error = random.randint(*error_range)
-        intervals.append((center, error))
-    return intervals
-
-def generate_guesses(length, intervals):
-    guesses = []
-    for _ in range(length):
-        # Randomly pick an interval and its error
-        interval, error = random.choice(intervals)
-        # Generate a guess within the range [interval - error, interval + error]
-        guess = random.randint(interval - error, interval + error)
-        guesses.append(guess)
-    guesses.sort()
-    return guesses
-
-def crear_archivo(n, rata, sospechoso, es=True):
-    with open("tests/"+str(n)+f"-{'es' if es else 'no-es'}.txt", 'w') as f:
-        f.write("# Primero viene la cantidad (n) de timestamps para ambos, luego n líneas que son un timestamp aproximado cada uno separado por una coma (',') del error, y luego n lineas de las transacciones del sospechoso\n")
-        f.write(str(n)+"\n")
-        for i in range(len(rata)):
-            f.write(str(rata[i][0])+","+str(rata[i][1])+"\n")
-        for i in range(len(sospechoso)):
-            f.write(str(sospechoso[i])+"\n")
-
-def probar_generador():
-    respuesta = None
-    seed = 0
-    while respuesta is None:
-        seed += 1
-        random.seed(seed)
-        n = 10000  # Number of intervals
-        center_range = (100, 1000)  # Range for center values
-        error_range = (10, 100)  # Range for error values
-        
-        # Generate intervals
-        new_intervals = generate_intervals(n, center_range, error_range)
-        guesses = generate_guesses(n, new_intervals)
-        respuesta = es_culpable(new_intervals, guesses)
-    print("Intervals:", new_intervals)
-    print("Guesses:", guesses)
-    print("Respuesta:", respuesta)
-    print("Seed:", seed)
-    crear_archivo(n, new_intervals, guesses)
-
-# rata es de la forma [[timestamp, error], ...]
-# sospechoso es de la forma [timestamp, ...]
-# ejemplo el archivo 5-es.txt devuelve:
-# Rata = [[599, 12], [727, 49], [892, 82], [856, 70], [229, 45]]
-# Sospechoso = [213, 607, 711, 806, 816]
-def leer_archivo(archivo):
-    rata = []
-    sospechoso = []
-    n = 0
-
-    with open(archivo, 'r') as f:
-        lines = f.readlines()
-        for index, line in enumerate(lines):
-            if index == 1:
-                n = int(line)
-            elif 2 <= index < 2 + n:
-                datos = line.split(",")
-                rata.append((int(datos[0]), int(datos[1])))
-            elif 2 + n <= index < len(lines):
-                sospechoso.append(int(line))
-
-    return rata, sospechoso
-
-
-# validamos que los tests que terminen en "es-txt" retornen que el sospechoso es la rata (pero no nos fijamos si estan
-# bien los datos), y los que terminan en "no-es.txt" retornen que el sospechoso no es la rata
-def validar_tests_aproximado(carpeta):
-    # Si no existe la carpeta Resultados la creamos
-    if not os.path.exists("Resultados"):
-        os.makedirs("Resultados")
-
-    for file in os.listdir(carpeta):
-        if file == "Resultados Esperados.txt" or file == "Esperados":
-            continue
-
-        rata, sospechoso = leer_archivo(carpeta + "/" + file)
-
-        respuesta = es_culpable(rata, sospechoso)
-        if (respuesta is None and "no-es" in file) or (respuesta is not None and "es" in file):
-            print("Test " + file + " OK")
-            if respuesta is not None:
-                with open("Resultados/"+file, 'w') as f:
-                    for i in range(len(respuesta)):
-                        f.write(str(respuesta[i][0]) + " --> " + str(respuesta[i][1][0]) + " ± " + str(respuesta[i][1][1]) + "\n")
-                    # print(str(respuesta[i][0]),"-->",str(respuesta[i][1][0]),"±",str(respuesta[i][1][1]))
-        else:
-            print("Test " + file + " FAIL")
 
 if __name__ == "__main__":
-    # Si pasamos un archivo por parametro, leemos ese archivo y le mostramos al usuario si el sospechoso es o no la rata
-    if len(sys.argv) > 1:
-        archivo = sys.argv[1]
-        rata, sospechoso = leer_archivo(archivo)
-        respuesta = es_culpable(rata, sospechoso)
-        if respuesta is None:
-            print("El sospechoso no es la rata")
-        else:
-            for i in range(len(respuesta)):
-                print(str(respuesta[i][0]), "-->", str(respuesta[i][1][0]), "±", str(respuesta[i][1][1]))
-    # Si no pasamos un archivo por parametro, corremos los tests aproximados
-    else:
+    if len(sys.argv) < 2:
         # main()
         # validar_tests_aproximado("tests")
         probar_generador()
+
+    match sys.argv[1]:
+        case "--validar-tests":
+            validar_tests_aproximado("tests")
+        case "--generar-set-datos":
+            probar_generador()
+        case other:
+            # Si pasamos un archivo por parametro, leemos ese archivo y le mostramos al usuario si el sospechoso es o no
+            # la rata
+            archivo = sys.argv[1]
+            rata, sospechoso = leer_archivo_test(archivo)
+            respuesta = es_culpable(rata, sospechoso)
+            if respuesta is None:
+                print("El sospechoso no es la rata")
+            else:
+                for i in range(len(respuesta)):
+                    print(str(respuesta[i][0]), "-->", str(respuesta[i][1][0]), "±", str(respuesta[i][1][1]))

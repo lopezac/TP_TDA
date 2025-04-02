@@ -8,12 +8,12 @@ NO_COLOR='\033[0m'
 # Directory containing the generated results
 dir_generados="Resultados"
 
-if [ ! -d "$dir_generados" ]; then
-    mkdir "$dir_generados"
-fi
-
 # Directory containing the expected results
 dir_esperados="tests/Esperados"
+
+if [ ! -d "$dir_esperados" ]; then
+    mkdir "$dir_esperados"
+fi
 
 # Loop through each file in the generated directory that contains "es" in its name
 for arch_genereado in "$dir_generados"/*es*; do
